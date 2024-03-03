@@ -1,0 +1,53 @@
+import pandas as pd
+import openai
+
+# Set your OpenAI API key here
+openai.api_key = 'YOUR_API_KEY'
+
+# Define the translation function with a user-defined prompt
+def translate(text, system_prompt, user_prompt):
+    # Convert text to string to ensure compatibility with string methods
+    text = str(text)
+    if pd.isna(text) or text.strip() == "":
+        return text  # Return the original text if it's NA or empty
+    
+    print(f"Processing: '{text[:50]}...'")  # Print before processing
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4-turbo-preview",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt.format(text=text)}
+            ],
+            temperature=0.2,
+            max_tokens=2000,
+            top_p=1.0,
+            frequency_penalty=0.0,
+            presence_penalty=0.0,
+        )
+        processed_text = response.choices[0].message['content'].strip()
+        print(f"API Response: {processed_text}")  # Print the full API response
+        return processed_text
+    except Exception as e:
+        print(f"Error during processing: {e}")
+        return text  # Return the original text in case of error
+
+# Load your CSV file
+print("Loading CSV file...")
+df = pd.read_csv("producadsdsadasts - cobic-ex.com (1) (2).csv")  # Replace with your actual file path
+
+# System and user prompts
+system_prompt = "In general, we want to add words. Think about what words you could add for SEO. Do not chat back to me - this content is going directly on a website without editing. just do the task.. You are changing the words in a CSV. You cannot see the CSV, but I'm using one prompt on the entire CSV. You must decide when it's necessary to change words or not. The words here need to be changed, and optimized for SEO. But do not change ANY technical information, specific names, specific measurements, anything specific must remain exactly the same as it was before, however where possible change the wording in order to make sure it's not duplicate content. If it's just a short word or one word, then just give me the same word again."
+user_prompt = "Rewrite this in a different way, unless it's technical information, or one word: {text} do not change explosion proof or explosion resistant"
+
+# Process each column
+for col in df.columns:
+    print(f"Starting processing of column '{col}'.")
+    df[f"{col}_processed"] = df[col].apply(lambda x: translate(x, system_prompt, user_prompt))
+    print(f"Completed processing for column '{col}'.")
+
+# Save the processed DataFrame to a new CSV file
+output_file = "processed_content.csv"
+df.to_csv(output_file, index=False)
+print("Processing complete. Output saved to", output_file)
